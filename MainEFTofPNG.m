@@ -675,8 +675,8 @@ EndVertex[ex_] := ex//.{
 (*propagators*)
 
 
-dtld = d - 2;
-cd = 2 * (d - 1) / dtld;
+dtld = d - 2 /. d -> 3;
+cd = 2 * (d - 1) / dtld /. d -> 3;
 
 
 P[i_, j_, k_, l_] := 1/2 * (
@@ -1233,10 +1233,14 @@ DimLimit[ex_] := Simp[ex] // Expand // TermByTerm[
          #/.d -> 3 + \[Epsilon]d, {\[Epsilon]d, 0, 0}
      ]&,True
 ];
+
+
 (* main integration fuction *)
 JustIntegrate[ex_] := (
     ex // InsertFRules // Integrate\[Delta]t // Integrate\[Delta]k // FeynIntegrate // DimLimit
 );
+
+
 IntegrateF[ex_] := ex // JustIntegrate // SimpFinal;
 IntegrateMirror[ex_] := ex // JustIntegrate // Mirror12 // SimpFinal;
 
@@ -1250,27 +1254,92 @@ IntegrateAuto[ex_] := IntegrateAutoTerm /@ PlusToList @ Expand @ ex;
 SumDiagrams[l_List] := Plus @@ Last @ Transpose @ l;
 
 
-(* ::Subchapter::Closed:: *)
+(* ::Subchapter:: *)
 (*INTERRUPT*)
 
 
 Interrupt[];
 
 
-(* ::Subchapter::Closed:: *)
+(* ::Subchapter:: *)
 (*FeynComp*)
 
 
-(* ::Subsection::Closed:: *)
+(* ::Subsection:: *)
+(*example: Newtonian*)
+
+
+(* legacy notation for diagrams *)
+oneGravitonExchange = p\[Phi][wl@1, pt@2] \[Phi]\[Phi][pt@2, pt@3] p\[Phi][wl@2, pt@3];
+oneGravitonExchange // JustIntegrate
+
+
+%[[2]]
+% // InputForm
+
+
+(* ::Subsubsection:: *)
+(*notation*)
+
+
+x[LI @ WL @ 2, LI @ DT @ 5, i]
+
+
+x[LI @ WL @ 1, LI @ DT @ 0, i]
+
+
+x[LI @ WL @ 2, LI @ DT @ 1, i]
+% // InputForm
+
+
+(* shorthand notation *)
+x[wl[1, 2], i]
+
+
+?JustIntegrate
+
+
+(* ::Subsubsection:: *)
+(*integration*)
+
+
+oneGravitonExchange // InsertFRules
+% // First
+
+
+% // Integrate\[Delta]t
+
+
+% // Integrate\[Delta]k
+
+
+% // FeynIntegrate
+% // DimLimit
+
+
+?FeynIntegrate
+
+
+(* ::Subsection:: *)
 (*example: 2PN point mass - simplest 2-loop sector*)
 
 
-(* G^0 kinematic contributions to the effective action *)
-LEFTkin = WlVertex[0, 0, 0]/.B1 -> 1 // Mirror12 // Cut;
+(* new notation for diagrams *)
+G Wl1F[LI[1,0,0], A1] Prop\[Phi][-A1, -A2] Wl2F[LI[1,0,0], A2] // IntegrateAuto
+
+
+FDiagrams[[1]]
+
+
+FDiagrams // MakePNGraphs
 
 
 (* integrate all diagrams *)
-L2PNdiagrams = Coefficient[FDiagrams, SO, 0]//IntegrateAuto; // TimeIt
+L2PNdiagrams = FDiagrams // IntegrateAuto; // TimeIt
+
+
+(* G^0 kinematic contributions to the effective action *)
+LEFTkin = WlVertex[0, 0, 0] /. B1 -> 1 // Mirror12 // Cut;
 
 
 (* complete effective action/Lagrangian *)
@@ -1279,99 +1348,3 @@ L2PN = LEFTkin + SumDiagrams @ L2PNdiagrams // SimpFinal;
 
 (* compare with previous result *)
 L2PN - Get[FileNameJoin[{"results", "LEFT.dat.m"}]] // PMPart // SimpFinal
-
-
-(* ::Subsection::Closed:: *)
-(*automatic computation up to NNLO quadratic in spin*)
-
-
-(* remove few "slow" diagrams, computed manually below *)
-manualNums = Range[243,249];
-automaticDiagrams = Fold[Delete, FDiagrams, Sort[manualNums, Greater]];
-
-
-(* show number of diagrams to compute automatically *)
-automaticDiagrams // Length
-
-
-(* ::Text:: *)
-(*NOTE: before running this, switch "Print[] command output" to *)
-(*"Print to Console" in Edit->Preferences->Messages, *)
-(*to have all the output messages in a separate window*)
-
-
-(* integrate over all the above diagrams; total timing circa 3.5 days *)
-integratedDiagrams = automaticDiagrams//IntegrateAuto;//TimeIt
-
-
-(* save result *)
-Put[integratedDiagrams, FileNameJoin[{"results", "integratedDiagrams.dat.m"}]];
-
-
-(* ::Subsection::Closed:: *)
-(*``manual'' computation of remaining diagrams*)
-
-
-(* show remaining diagrams *)
-manualDiagrams = ListToPlus @ (FDiagrams[[#]]& /@ manualNums);
-manualDiagrams // MakePNGraphs
-
-
-(* slow: timing circa 25hrs, inserting contraction manually *)
-manualDiagram1 = (
-    pA[wl @ 1, pt @ 11] * AA[pt @ 11, pt @ 1]
-    * p\[Phi][wl @ 2, pt @ 21] * \[Phi]\[Phi][pt @ 21, pt @ 2]
-    * Glue[wl @ 1, wl @ 3] * p\[Phi][wl @ 3, pt @ 31] * \[Phi]\[Phi][pt @ 31, pt @ 3]
-    * Glue[wl @ 2, wl @ 4] * pA[wl @ 4, pt @ 41] * AA[pt @ 41, pt @ 4]
-    * \[Phi]AA[pt @ 2, pt @1, pt @ 5] * AA[pt @ 5, pt @ 6]
-    * \[Phi]AA[pt @ 3, pt @ 4, pt @ 6]
-)//IntegrateF;//TimeIt
-
-
-(* save result *)
-Put[manualDiagram1, FileNameJoin[{"results", "manualDiagram1.dat.m"}]];
-
-
-(* very slow: timing circa 11hrs, inserting contraction manually *)
-manualDiagram2 = (
-	1/2 * pA[wl @ 1, pt @ 11] * AA[pt @ 11, pt @ 1]
-    * p\[Phi][wl @ 2, pt @ 21] * \[Phi]\[Phi][pt @ 21, pt @ 2]
-    * Glue[wl @ 1, wl @ 3] * pA[wl @ 3, pt @ 31] * AA[pt @ 31, pt @ 3]
-    * Glue[wl @ 2, wl @ 4] * p\[Phi][wl @ 4, pt @ 41] * \[Phi]\[Phi][pt @ 41, pt @ 4]
-    * \[Phi]AA[pt @ 2, pt @ 1, pt @ 5] * AA[pt @ 5, pt @ 6]
-    * \[Phi]AA[pt @ 4, pt @ 3, pt @ 6]
-)//IntegrateMirror;//TimeIt
-
-
-(* save result *)
-Put[manualDiagram2, FileNameJoin[{"results", "manualDiagram2.dat.m"}]];
-
-
-(* ::Subsection::Closed:: *)
-(*sum effective action*)
-
-
-(* get G^0 kinematic contributions to the effective action *)
-LEFTkin = WlVertex[0, 0, 0]/.B1 -> 1 // Mirror12 // Cut;
-
-
-(* sum interaction part of the effective action *)
-integratedDiagrams = Get[
-    FileNameJoin[{"results", "integratedDiagrams.dat.m"}]
-];
-manualDiagram1 = Get[FileNameJoin[{"results", "manualDiagram1.dat.m"}]];
-manualDiagram2 = Get[FileNameJoin[{"results", "manualDiagram2.dat.m"}]];
-LEFTauto = SumDiagrams @ integratedDiagrams;
-LEFTint = LEFTauto + manualDiagram1 + manualDiagram2;
-
-
-(* sum total effective action/Lagrangian *)
-LEFT = LEFTkin + LEFTint // SimpFinal;
-
-
-(* compare with previous result *)
-LEFT - Get[FileNameJoin[{"results", "LEFT.dat.m"}]] // SimpFinal
-
-
-(* optional: save result *)
-(* Put[LEFT,FileNameJoin[{"results","LEFT.dat.m"}]]; *)

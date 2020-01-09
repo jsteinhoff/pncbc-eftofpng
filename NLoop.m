@@ -8,7 +8,7 @@
 (*EFTofPNG: NLoop*)
 
 
-(* ::Subchapter:: *)
+(* ::Subchapter::Closed:: *)
 (*Copyright*)
 
 
@@ -297,7 +297,7 @@ Round[time/60/60,0.1] Hour ] ] ]
 SetAttributes[timeIt,HoldFirst]
 
 
-(* ::Subchapter::Closed:: *)
+(* ::Subchapter:: *)
 (*FeynRul*)
 
 
@@ -550,7 +550,7 @@ SSpart[ex_]:>Coefficient[ex,SO,2]
 SpinProjectorQ[sym_]:=MemberQ[SpinProjectorList,sym];
 
 
-(* ::Subchapter::Closed:: *)
+(* ::Subchapter:: *)
 (*FeynInteg*)
 
 
@@ -729,7 +729,7 @@ nestIntegrals[ex_]:=expandInt[ex//changeIntVtoFourierk]//.{
 Int[dd[ks@A_]dd[ks@B_]e_]:>(Int[dd[ks@A]dd[ks@B]e]//nestExp//nestLoops//simpProp)}
 
 
-(* ::Subchapter::Closed:: *)
+(* ::Subchapter:: *)
 (*NLoop: generate master integrals*)
 
 
@@ -1026,7 +1026,8 @@ twoloopIntegralsflip
 
 
 (*export to "twoloopintegs" file*)
-SetDirectory[NotebookDirectory[]];Put[twoloopIntegrals,"twoloopintegs.dat.m"];
+SetDirectory[NotebookDirectory[]];
+Put[twoloopIntegrals,"twoloopintegs.dat.m"];
 
 
 (* ::Subsection::Closed:: *)

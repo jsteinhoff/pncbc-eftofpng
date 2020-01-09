@@ -237,6 +237,9 @@ SetOptions[ContractMetric, {AllowUpperDerivatives -> True}];
 (*Field*)
 
 
+d=3;
+
+
 NfCount[e_] := e/.{ 
     \[Phi][] :> Nf * \[Phi][],
     A[i_] :> Nf * A[i],
@@ -260,14 +263,14 @@ Sfieldint = (
             )//Sumd1[a, b, c, b1, b2, c1]
         )
     )
-    //TodPlus1//SimpFast//ToKK//NoScalar//ToPN//PN[6]//Simp//NfInt[4]
+    //TodPlus1//SimpFast//ToKK//NoScalar//ToPN//PN[4]//Simp//NfInt[4]
     //Expand//FlipDer//ContractMetric//PutScalar//Simp
 );
 
 
 (* total time derivatives can be added to simplify or modify form of 
    field part *)
-TD = (
+TD = 0 (
     Module[{i, j}, cInv^6 / (16\[Pi] G) * ParamD[t][
         -1/2 * A[i] * A[-i] * CD[-j][A[j]] 
         - 2 / (2 - d) * CD[-i][\[Phi][]] * A[-j] * \[Sigma][i, j] 
@@ -296,125 +299,26 @@ SfieldintTD = (
 (*   the tensor field *) *)
 
 
-(* ::Section::Closed:: *)
+(* ::Section:: *)
 (*Mass*)
 
 
 Swlmass = (
     -m * cInv^-2 * Sqrt[gd1[-a, -b] * ud1[a] * ud1[b]//Sumd1[a, b]]
-    //TodPlus1//ToKK//ToPN//SimpFast//PN[6]//Contract//Simp
+    //TodPlus1//ToKK//ToPN//SimpFast//PN[4]//Contract//Simp
 );
-
-
-(* ::Section::Closed:: *)
-(*Spin*)
-
-
-SetOptions[MakeRule, MetricOn -> All];
-(* why constant? only up to finite size effects *)
-DefConstantSymbol[u]; 
-Insertu[e_] := e/.u -> Swlmass / (-m * cInv^-2);
-
-
-(* IndexSolve that follows, does not work on tensor with 
-   contracted indices, so indices should be contracted first *)
-CnnSSC = (
-    \[Delta][i, j] * (
-        Sumd1[a, b][Sd1[-j, -a] * ed1[a, -b] * ud1[b]] 
-        + u * Sd1[-j, -n]//TodPlus1//ToKK//ToPN
-    )//ContractMetric//Simp
-);
-(* insertu is not essential here *)
-CnnRule = IndexSolve[CnnSSC == 0, St[i]]//Insertu;
-InsertCnnSSC[e_] := e/.CnnRule;
-
-
-(* Insertu is for the 2nd term here *)
-spinv = ( 
-    cInv^-1 * (
-        (
-            -1/2 * Sd1[-a, -b] * ed1[b, -c] * gd1[c, b1] * (
-                Der[-c1] @ ed1[a,-b1] 
-                - Sumd1[b2][Chr2[b2, -c1, -b1] * ed1[a, -b2]]
-            )* ud1[c1]//Sumd1[a, b, c, b1, c1]
-         )-(
-             Sd1[-a, -b] * ed1[b, -c] * ud1[c] * ed1[a, -b1] * ( 
-                 Chr2[b1, -b2, -c1] * ud1[b2] * ud1[c1] / u^2
-             )//Sumd1[a, b, c, b1, b2, c1]
-         ) 
-     )//TodPlus1//SimpFast//ToKK//ToPN//InsertCnnSSC//Insertu//PN[7]
-     //Contract//Simp
-);
-
-
-Swlspin1 = (
-    spinv - (
-        cInv^-1 * a1[i] * ed1[a, -i] * Sd1[-a, -b] * ed1[b, -c] * (
-            ud1[c] / u^2
-        )//Sumd1[a, b, c]//TodPlus1//SimpFast//ToKK//ToPN//InsertCnnSSC
-        //Insertu//PN[7]
-    )//Contract//Simp
-);
-
-
-(* ::Section::Closed:: *)
-(*Spin-Squared*)
-
-
-SortCovDsStart[CD];
-DefConstantSymbol[CES2];
-
-
-DefTensor[s[i], {Mflat, t}];
-ToSVec[e_] := e/.S[i_, j_] :> Module[{l}, epsilon\[Delta][i, j, l] * s[-l]];
-
-
-(* ::Text:: *)
-(*(* on this section the spin is not the local hatted one as assumed for *)
-(*   the linear in spin section, but to begin with, it is the general *)
-(*   covariant one *) *)
-
-
-(* transforming to the local hatted spin *)
-ToSHat[e_] := e/.Sd1[-a_, -b_] :> (
-    Sd1[-a, -b] - 1 / u^2 * Module[{c, c1}, (
-        Sd1[-a, -c] * ud1[c] * ud1[c1] * gd1[-c1, -b]
-        - Sd1[-b, -c] * ud1[c] * ud1[c1] * gd1[-c1, -a]
-    )//Sumd1[c, c1]]
-);
-ToSHLoc[e_] := e/.Sd1[-a_, -b_] :> Module[
-    {c, c1}, Sd1[-c, -c1] * ed1[c, -a] * ed1[c1, -b]//Sumd1[c,c1]
-];
-
-
-(* TermByTerm[transfo_][e_Plus] := Module[
-       {terms,result},terms=Expand[e];result=transfo/@terms], may speed it *)
-Swlspin2 = (
-    1 / (2m) * Riem[c, -a, -b1, -b] * ud1[a] * ud1[b] / u * (
-        Sd1[-c, -b2] * gd1[b2, b3] * Sd1[-b3, -b4] * gd1[b4, b1]
-    )//Sumd1[a, b, c, b1, b2, b3, b4]//ToSHat//ToSHLoc//TodPlus1//ToKK
-    //ToPN//Insertu//InsertCnnSSC//PN[8]//Contract//Simp
-);
-
-
-Swlspin2vec = Swlspin2//ToSVec//Contract//Simp;
-Swlspin2vec/.d -> 3;
 
 
 (* ::Section:: *)
-(*Cubic Spin*)
-
-
-(* ::Section:: *)
-(*Quartic Spin*)
-
-
-(* ::Section::Closed:: *)
 (*Export *)
 
 
 SetDirectory[NotebookDirectory[]];
 
 
+SfieldintTD
 SfieldintTD >> "frules_field.dat.m";
-Swlmass + Swlspin1 + CES2 * Swlspin2 >> "frules_wl.dat.m";
+
+
+Swlmass
+Swlmass >> "frules_wl.dat.m";

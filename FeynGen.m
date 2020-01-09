@@ -150,7 +150,7 @@ TimeIt[ex_] := Module[
 SetAttributes[TimeIt, HoldFirst];
 
 
-(* ::Subchapter::Closed:: *)
+(* ::Subchapter:: *)
 (*Generate Graph Topologies*)
 
 
@@ -239,9 +239,9 @@ CountTopology[expr_] := UncountTopology[expr]/.{
    call before contractions *)
 FilterClassicalTopology[expr_] := Select[
     expr//CountTopology, (
-        EvenQ[Exponent[#, propa]] && 
+        EvenQ[Exponent[#, propa]] &&
         Exponent[#, propa] / 2 - Exponent[#, vertex] <= -1 &&
-	    Exponent[#, wl1] >= 1 && Exponent[#, wl2] >= 1 
+	    Exponent[#, wl1] >= 1 && Exponent[#, wl2] >= 1
     )&
 ]//UncountTopology;
 
@@ -313,8 +313,14 @@ MakeGraphs[expr_] := MakeGraphTerm /@ PlusToList[
 ];
 
 
-(* ::Section::Closed:: *)
+(* ::Section:: *)
 (*Example: Topologies to G^3*)
+
+
+Wl1T[A1] Wl2T[-A1] // MakeGraphs
+
+
+Wl1T[A1] VertexT[-A1, A2, A3] Wl2T[-A2] Wl2T[-A3] // MakeGraphs
 
 
 DefConstantSymbol[G];
@@ -331,23 +337,37 @@ VerticesG = Block[{rG = Sqrt[G], n = 3}, {
 	(rG^(#) / (# + 2)! * VertexT @@ (
         Symbol @ StringJoin["A", ToString[#]]& /@ Range[# + 2]
     ))& /@ Range[n - 1]
-}//Flatten];
+}//Flatten]
 
 
 (* generate combinations of vertices to G^3 *)
-vert = GenerateVertices[VerticesG, Exponent[#, G] <= 3&];
+vert = GenerateVertices[VerticesG, Exponent[#, G] <= 3&]
+
+
 (* filter combinations with 2 worldlines and even props before 
    contraction *) 
-vertf = FilterClassicalTopology[vert];
+vertf = FilterClassicalTopology[vert]
+
+
+vertf // Length
+
+
 (* generate contractions *)
-contract = vertf//TermByTerm[ContractVertices, True]//ListToPlus;
+contract = vertf//TermByTerm[ContractVertices, True]//ListToPlus
+
+
 (* further filter contractions *)
-contractf = Collect[contract//DropRenormalization//DropUnconnected, G];
+contractf = Collect[contract//DropRenormalization//DropUnconnected, G]
+
+
+contractf // Expand // Length
+
+
 (* generate topology graphs up tp G^3 *)
 MakeGraphs[G^# * Coefficient[contractf, G, #]]& /@ Range[3]
 
 
-(* ::Subchapter::Closed:: *)
+(* ::Subchapter:: *)
 (*Generate PN Diagrams*)
 
 
@@ -616,8 +636,15 @@ MakePNGraphs[expr_] := MakePNGraphTerm /@ PlusToList[
 ];
 
 
-(* ::Section::Closed:: *)
-(*Example: PN diagrams to G^3 and 4PN*)
+(* ::Section:: *)
+(*Example: PN diagrams to 2PN*)
+
+
+(
+  Wl1F[LI[1,0,0], A1] Prop\[Phi][-A1, -A2] Wl2F[LI[1,0,0], A2] +
+  Wl1F[LI[0,1,0], A1] PropA[-A1, -A2] Wl2F[LI[0,1,0], A2] +
+  Wl1F[LI[0,0,1], A1] Prop\[Sigma][-A1, -A2] Wl2F[LI[0,0,1], A2]
+) // MakePNGraphs
 
 
 (* cut at certain PN and spin orders *)
@@ -636,49 +663,35 @@ CutSpin[expr_] := Collect[
 
 
 (* generate topology contractions up tp G^3 and put in fields *)
-diagrams = contractf // Expand // TermByTerm[InsertFields, True]; 
-(* cut contractions at 4PN order *)
-PNdiagrams = diagrams // ShowPNOrder // Cut4PN;
+diagrams = contractf // Expand // TermByTerm[InsertFields, True];
+
+
+diagrams // Length
+
+
+(* cut contractions at 2PN order *)
+PNdiagrams = diagrams // ShowPNOrder // Cut2PN;
+
+
+PNdiagrams // Expand // Length
+
+
 (* add in up to 3 propagator insertions.
    In general this should be n insertions at nPN *)
 PNdiagramsX = PNdiagrams // Expand // TermByTerm[
-    (#//PropagatorInsertions[3]//Cut4PN//ToCanonicalDiagrams//Cut4PN)&,
+    (#//PropagatorInsertions[2]//Cut2PN//ToCanonicalDiagrams//Cut2PN)&,
     True
 ];
-(* project to spin sectors and cut at quadratic in spin and 4PN *)
-PNdiagramsS = PNdiagramsX // Expand // TermByTerm[
-    (#//ProjectSpin//CutSpin//ShowPNOrder//Cut4PN//ToCanonicalDiagrams)&,
-    True
-]//Cut4PN;
+
+
+PNdiagramsX // Length
 
 
 (* set directory for output of graphs *)
 SetDirectory[NotebookDirectory[]];
-Put[PNdiagramsS, "PNdiagrams.dat.m"];
-
-
-(* ::Subsection::Closed:: *)
-(*point-mass diagrams*)
+Put[PNdiagramsX, "PNdiagrams.dat.m"];
 
 
 (* generate point-mass graphs to 2PN *)
-Coefficient[PNdiagramsS, SO, 0] // Cut2PN;
-MakePNGraphs[G^# * Coefficient[%, G, #]]& /@ Range[3]
-
-
-(* ::Subsection::Closed:: *)
-(*spin-orbit diagrams*)
-
-
-(* generate spin-orbit graphs to NNLO *)
-Coefficient[PNdiagramsS, SO, 1];
-MakePNGraphs[G^# * Coefficient[%, G, #]]& /@ Range[3]
-
-
-(* ::Subsection::Closed:: *)
-(*spin-squared diagrams*)
-
-
-(* generate quadratic in spin graphs to NNLO *)
-Coefficient[PNdiagramsS, SO, 2];
+Coefficient[PNdiagramsX, SO, 0] // Cut2PN;
 MakePNGraphs[G^# * Coefficient[%, G, #]]& /@ Range[3]
